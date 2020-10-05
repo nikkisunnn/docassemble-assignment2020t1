@@ -2,41 +2,26 @@
 # You will be implementing the Legal Aid Bureau's interview to determine
 # whether an applicant is eligible for legal aid. 
 # The total score that can be awarded for this assignment is 20.
-# The reference interview is found here:
-# https://guided.page/interview?i=docassemble.playground3%3Alab.yml#page1
-# Resources are found here:
-# https://lab.mlaw.gov.sg/legal-services/taking-the-means-test/
-# https://sso.agc.gov.sg/SL/LAAA1995-RG1#Sc1-
 ---
 # MODIFY THIS BLOCK
 # Please fill in the relevant information.
 metadata:
   title: |
-    Your Title
+    Means Test for Legal Aid at the Legal Aid Bureau
   short title: |
-    Your Short Title
+    Means Test
   description: |
-    Your Description
+    Assess an applicant's financial circumstances to determine if they have limited means to be eligible for legal aid at the Legal Aid Bureau.
   authors:
-    - name: Your Name Here
+    - name: Nikki Sun
       organization: COR-LAW-2215 Digital Intelligence for Lawyers
-  revision_date: 2020-09-16
+  revision_date: 2020-10-05
 ---
 # DO NOT MODIFY THIS BLOCK. SCORE: 5
-# Implement a check_nric function in a module file called validation.py.
-# It should check for (1) correct format and (2) that it is a valid NRIC.
-# Use a regular expression to test for the correct format.
-# Implement the checksum algorithm to determine whether the NRIC is valid.
-# The NRIC checksum algorithm can be found on:
-# http://www.ngiam.net/NRIC/ or Wikipedia
-# Test your function using data from: https://samliew.com/nric-generator
 modules:
-  .validation
+- .validation
 ---
 # DO NOT MODIFY THIS BLOCK
-# This is your objects block.
-# Individual is used for the applicant.
-# DAList is used for household_incomes.
 objects:
   applicant: Individual
   household_members: DAList.using(object_type=Individual, there_is_another=False)
@@ -45,11 +30,41 @@ objects:
 # Use this block to control the interview logic.
 # Include this line somewhere in your code: 
 #   household_members.append(applicant)
-# This line of code adds the applicant to the household_members DAList.
-# This ensures that the applicant appears in the household_members.table.
 mandatory: True
 code: |
-
+  if welcome_msg:
+    property_information
+  else:
+    exit_screen
+  if property_information:
+    more_than_one  
+    if more_than_one:
+      ineligible_excess_property
+    else:
+      if not living_in_property:
+        ineligible_not_living
+      else:
+        if property_value > 13000:
+          ineligible_property_value  
+        else:
+          if property_value:
+            savings_amount
+  else:
+   if not property_information:
+     savings_amount
+     
+  birthday = birth_date 
+  current = current_datetime()
+  interval = date_difference(starting=birthday, ending=current)
+  
+  if interval.years < 60 and savings_amount > 10000:
+    ineligible_savings_under60
+  if interval.years > 60 and savings_amount > 40000:
+    ineligible_savings_over60
+  else:
+    applicant.name.first
+    if applicant.name.first:
+      household_members.append(applicant)
 ---
 # DO NOT MODIFY THIS BLOCK OR MOVE IT
 mandatory: True
@@ -61,19 +76,71 @@ code: |
 # Use this block to write code that calculates the average PCHI
 mandatory: True
 code: |
-
+  total_income = sum (member.income for member in household_members)
+  pchi_value = total_income /12
+  if pchi_value > 950:
+    ineligible_pchi
+  else:
+    eligible_screen
 ---
-# DO NOT MODIFY THIS BLOCK
-table: household_members.table
-rows: household_members
-columns: 
-  - Name: row_item
-  - Birthdate: row_item.birthdate
-  - Income: row_item.income
-edit:
-  - name.first
+#QUESTIONS SECTION (IN SEQUENCE OF INTERVIEW FLOW)
+#Welcome Text
+question: |
+  Legal Aid Means Test
+subquestion: |
+  Welcome. This test assesses your financial circumstances to determine if you are eligible for legal aid at the Legal Aid Bureau.
+continue button field: welcome_msg
 ---
-# DO NOT MODIFY THIS BLOCK
+#Property Means Test
+question: |
+  Do you own any property?
+yesno: property_information
+---
+question: |
+  Property Information
+fields:
+  - 'Do you own more than one property?': more_than_one
+    datatype: yesnoradio
+  - 'Do you currently reside in this property?': living_in_property
+    show if: 
+      variable: more_than_one 
+      is: False
+    datatype: yesnoradio
+  - "What is the annual value of your residential property?": property_value
+    datatype: currency
+    min: 0
+    show if: living_in_property
+---
+#Savings Means Test
+question: |
+  Savings Information
+fields:
+  - 'What is your date of birth?': birth_date
+    datatype: date
+  - 'How much total savings and investments do you have?': savings_amount
+    datatype: currency
+    min: 0
+    default: 0
+---
+#Applicant's Personal Information
+question: |
+  Please enter your personal information.
+fields:
+  - First Name: applicant.name.first
+  - Last Name: applicant.name.last
+  - Birthdate: applicant.birthdate
+    datatype: date
+    default: ${ birth_date }
+#Included so applicant does not have to key in birthdate twice.
+  - 'NRIC': nric
+    validate: check_nric
+#made it non case-sensitive so it's easier.
+  - "Your total income in past 12 months": applicant.income
+    datatype: currency
+    min: 0
+    default: 0
+---
+# DO NOT MODIFY THIS BLOCK - Adding Household Members
 question: | 
   Please add all other household members.
 subquestion: |
@@ -91,7 +158,7 @@ subquestion: |
   
 field: review_household_members
 ---
-# DO NOT MODIFY THIS BLOCK
+# DO NOT MODIFY THIS BLOCK - Keying in Household Members' Data
 question: |
   Information about your ${ordinal(i)} household member:
 fields:
@@ -103,6 +170,66 @@ fields:
     datatype: currency
     min: 0
     default: 0
+---
+# DO NOT MODIFY THIS BLOCK - Displaying table of Household Members
+table: household_members.table
+rows: household_members
+columns: 
+  - Name: row_item
+  - Birthdate: row_item.birthdate
+  - Income: row_item.income
+edit:
+  - name.first
+---
+#INELIGIBLE SCREENS - included explanation for why applicant is ineligible
+#Ineligible screen 1
+question: |
+  Unfortunately, you are not eligible for legal aid as you own more than one property.
+event: ineligible_excess_property
+---
+#Ineligible screen 2
+question: |
+  Unfortunately, you are not eligible for legal aid as you do not reside in your property. 
+event: ineligible_not_living
+---
+#Ineligible screen 3
+question: |
+  Unfortunately, you are not eligible for legal aid.
+subquestion: |
+  The annual value of an applicant’s place of residence owned by the applicant must be $13,000 or lower.
+event: ineligible_property_value
+---
+#Ineligible screen 4
+question: |
+  Unfortunately, you are not eligible for legal aid. 
+subquestion: |
+  Applicants under 60 years old must not exceed $10,000 in savings and non-CPF investments to qualify.
+event: ineligible_savings_under60
+---
+#Ineligible screen 5
+question: |
+  Unfortunately, you are not eligible for legal aid. 
+subquestion: |
+  Applicants over 60 years old must not exceed $40,000 in savings and non-CPF investments to qualify.
+event: ineligible_savings_over60
+---
+#Ineligible screen 6
+question: |
+  Unfortunately, you are not eligible for legal aid as your Per Capita Gross Monthly Household Income (PCHI) exceeds $950. 
+subquestion: |
+  However, if you have certain reasons or information that you think makes your situation different or special, e.g. you have a very serious illness and cannot afford legal services as you need to pay for major medical procedures, you may contact the MinLaw Services Centre for further assistance at 1800 2255 529.
+buttons:
+  - Exit: exit
+  - Restart: restart
+event: ineligible_pchi
+---
+#Eligible screen
+question: |
+  Congratulations, you have passed the means test for legal aid.
+buttons:
+  - Exit: exit
+  - Restart: restart
+event: eligible_screen
 ---
 # IMPLEMENT ALL YOUR QUESTION BLOCKS.
 # Implement all the question blocks correctly. Score 3
