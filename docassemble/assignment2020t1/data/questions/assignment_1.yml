@@ -88,7 +88,12 @@ code: |
 question: |
   Legal Aid Means Test
 subquestion: |
-  Welcome. This test assesses your financial circumstances to determine if you are eligible for legal aid at the Legal Aid Bureau.
+  Welcome. This test assesses your financial circumstances to determine if you are eligible for legal aid at the Legal Aid Bureau. 
+under: |
+  *Note: 
+  
+  - Only Singapore citizens or permanent residents residing in Singapore are eligible for legal aid at the Legal Aid Bureau. 
+  - If you are below the age of 21, a parent or guardian must apply on your behalf.
 continue button field: welcome_msg
 ---
 #Property Means Test
@@ -117,10 +122,19 @@ question: |
 fields:
   - 'What is your date of birth?': birth_date
     datatype: date
-  - 'How much total savings and investments do you have?': savings_amount
+  - 'How much total savings and investments* do you have?': savings_amount
     datatype: currency
     min: 0
     default: 0
+under: |
+     *This is calculated by adding up the value of the following assets that you own in your name:
+     
+     a) Bank accounts savings(personal or joint);
+     
+     b) Overall value of shares in your Central Depository(CDP) account; and
+     
+     c) Any other financial/investment products with a cash value, such as fixed deposit accounts at financial institutions, and shares, bonds and exchange traded funds aside from those in your CDP account.
+
 ---
 #Applicant's Personal Information
 question: |
@@ -131,10 +145,9 @@ fields:
   - Birthdate: applicant.birthdate
     datatype: date
     default: ${ birth_date }
-#Included so applicant does not have to key in birthdate twice.
+#Included from previous answer so applicant does not have to key in birthdate twice.
   - 'NRIC': nric
     validate: check_nric
-#made it non case-sensitive so it's easier.
   - "Your total income in past 12 months": applicant.income
     datatype: currency
     min: 0
@@ -225,7 +238,7 @@ event: ineligible_pchi
 ---
 #Eligible screen
 question: |
-  Congratulations, you have passed the means test for legal aid.
+  Congratulations, you have passed the means test and you are eligible for legal aid.
 buttons:
   - Exit: exit
   - Restart: restart
